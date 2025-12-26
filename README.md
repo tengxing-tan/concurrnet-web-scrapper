@@ -74,3 +74,10 @@ Refine the scraper to handle real-world challenges like rate limiting and dynami
 - **Handle Dynamic Content**: For JavaScript-heavy sites, integrate Chromedp to control a headless browser.
 - **Data Persistence**: Update your pipeline to save results to a structured format like a CSV file or a database.
 - **Anti-Bot Strategies**: Rotate User-Agent headers and consider integrating proxy pools to avoid IP bans.
+
+# References
+
+- https://github.com/avelino/awesome-go?tab=readme-ov-file
+- https://github.com/antchfx/antch-getstarted/blob/master/main.go
+- [Meidum article: Understand Goroutines](https://medium.com/@mail2rajeevshukla/unlocking-the-power-of-goroutines-understanding-gos-lightweight-concurrency-model-3775f8e696b0)
+- https://jsonplaceholder.typicode.com/
