@@ -8,13 +8,13 @@ import (
 )
 
 func main() {
-	if err := fetchOneUrl(); err != nil {
+	if err := handleMultipleUrlsInForLoop(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func fetchOneUrl() error {
-	url := "https://jsonplaceholder.typicode.com/posts/1"
+func fetchOneUrl(paramId int) error {
+	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", paramId)
 
 	res, err := http.Get(url)
 	if err != nil {
@@ -38,5 +38,14 @@ func fetchOneUrl() error {
 	}
 
 	fmt.Printf("Post #%d Title: %s\n", post.ID, post.Title)
+	return nil
+}
+
+func handleMultipleUrlsInForLoop() error {
+	for i := 1; i <= 100; i++ {
+        if err := fetchOneUrl(i); err != nil {
+			return err
+		}
+    }
 	return nil
 }

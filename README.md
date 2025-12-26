@@ -15,14 +15,38 @@ Using Simple Public APIs (Recommended for Concurrency Focus)
 
 - JSONPlaceholder: A free fake API for testing and prototyping. It returns standard JSON for posts, comments, and users, allowing you to focus entirely on your Go concurrency logic.
 
-**Goroutine**
+## Things To Learn
+
+### Goroutines: Parallel Fetching
 
 - Managed by Go runtime not OS, which resolve heavy threads (required pre-allocated stack)
 - Reduce overhead of context switching
+- Purpose: Instead of waiting for one URL to finish downloading before starting the next, you can launch hundreds of fetches simultaneously.
+- Note: If the main function finishes before your goroutines, the program exits immediately and the goroutines are killed. This is why synchronization is required.
+
+### sync.WaitGroup: Coordination
+
+- A sync.WaitGroup acts as a counter that keeps track of how many tasks are still running.
+- Add(n): Call this before starting your goroutines to tell Go how many tasks it needs to wait for.
+- Done(): Inside the goroutine, call defer wg.Done() as the very first line. This ensures that when the function finishes (even if it fails), the counter is decremented.
+- Wait(): In your main function, call wg.Wait(). This blocks execution until the counter reaches zero, ensuring all fetches are complete before the program moves forward.
+
+### Channels: Gathering Results
+
+- While WaitGroups coordinate timing, Channels are the "pipes" used to move data safely between goroutines.
+- Unbuffered vs. Buffered: You can use a buffered channel to collect results without blocking each worker immediately.
+- Collection: As each goroutine finishes fetching a URL, it sends the result (e.g., the HTML or status code) into the channel: resultsChan <- data.
+- Safe Close: A common pattern is to start a separate goroutine that calls wg.Wait() and then closes the channel. This allows you to range over the channel in your main function to process all collected data.
+
+### Real-World Workflow Example
+
+- Define a channel to receive results and a WaitGroup for tracking.
+- Iterate over a list of URLs, calling wg.Add(1) and then launching a go func for each.
+- Inside each goroutine, fetch the data and send it to the channel.
+- Wait and Close: Start a helper goroutine that waits for the WaitGroup to finish and then closes the results channel.
+- Process results by reading from the channel until it is empty.
 
 ## How To Do
-
-s
 
 ### Phase 1: Foundation & Single-Page Scraper
 
