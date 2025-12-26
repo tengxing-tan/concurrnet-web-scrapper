@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+	"os"
+	"strconv"
 )
 
 type Post struct {
@@ -19,13 +22,24 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	channel := make(chan int)
+	channel := make(chan Post, 10) // Buffered size of 10
+
+	file, err := os.Create("posts.csv")
+	if err != nil {
+		log.Fatalf("Failed to create file: %v", err)
+	}
+	defer file.Close() // Best practice: Explicitly Close the File
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush() // Ensures all data is physically written to the disk
+
+	writer.Write([]string{"ID", "Title"})
  	
 	postIDs := []int{1,2,3,4,5,10,50,75,100}
 	
 	for _, id := range postIDs {
 		wg.Add(1)
-		go fetchPost(id, &wg, channel)
+		go fetchPostInChan(id, &wg, channel)
 	}
 
 	// Start a goroutine to Wait and Close the channel.
@@ -35,14 +49,22 @@ func main() {
 		close(channel)
 	}()
 
-	for id := range channel {
-    	fmt.Println("Received:", id)
+	for post := range channel {
+    	row := []string{
+			strconv.Itoa(post.ID), 
+			post.Title,
+		}
+		
+		if err := writer.Write(row); err != nil {
+			log.Printf("Error writing row for post %d: %v", post.ID, err)
+		}
 	}
 
 	fmt.Printf("\nDone processed %d requests in %v\n", len(postIDs), time.Since(start))
 }
 
-func fetchPost(id int, wg *sync.WaitGroup, channel chan int) {
+// The 'chan<-' syntax means this function can only SEND to the channel NOT read/close
+func fetchPostInChan(id int, wg *sync.WaitGroup, channel chan<- Post) {
 	defer wg.Done()
 
 	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", id)
@@ -61,7 +83,5 @@ func fetchPost(id int, wg *sync.WaitGroup, channel chan int) {
 		return
 	}
 
-	channel <- post.ID
-
-	fmt.Printf("Successfully fetched Post #%d, %s\n", post.ID, post.Title)
+	channel <- post
 }

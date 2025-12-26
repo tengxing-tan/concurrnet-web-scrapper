@@ -75,6 +75,14 @@ Refine the scraper to handle real-world challenges like rate limiting and dynami
 - **Data Persistence**: Update your pipeline to save results to a structured format like a CSV file or a database.
 - **Anti-Bot Strategies**: Rotate User-Agent headers and consider integrating proxy pools to avoid IP bans.
 
+# Why this project was a success:
+
+You successfully avoided the most common concurrency traps:
+
+- Race Conditions: By using a channel for the CSV writing, you ensured only one thing touches the file at a time.
+- Zombies: By using a WaitGroup, you ensured every request finished.
+- By using a separate goroutine to close the channel, you kept the data flowing.
+
 # References
 
 - https://github.com/avelino/awesome-go?tab=readme-ov-file
