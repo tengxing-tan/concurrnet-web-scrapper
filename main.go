@@ -5,47 +5,51 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
-func main() {
-	if err := handleMultipleUrlsInForLoop(); err != nil {
-		log.Fatal(err)
-	}
+type Post struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
 }
 
-func fetchOneUrl(paramId int) error {
-	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", paramId)
+func main() {
+	start := time.Now()
 
-	res, err := http.Get(url)
+	var wg sync.WaitGroup
+ 	
+	postIDs := []int{1,2,3,4,5,10,50,75,100}
+	
+	for _, id := range postIDs {
+		wg.Add(1)
+		go fetchPost(id, &wg)
+	}
+	
+	// Block the main function here until the counter returns to 0
+	wg.Wait()
+
+	fmt.Printf("\nDone processed %d requests in %v\n", len(postIDs), time.Since(start))
+}
+
+func fetchPost(id int, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", id)
+
+	res, err := http.Get(url)	
+
 	if err != nil {
-		return fmt.Errorf("http request: %w", err)
+		log.Printf("Error fetching post %d: %v", id, err)
+		return
 	}
 	defer res.Body.Close()
 
-	// Accept any 2xx as success
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("unexpected status: %d %s", res.StatusCode, res.Status)
-	}
-
-	var post struct {
-		UserID int    `json:"userId"`
-		ID     int    `json:"id"`
-		Title  string `json:"title"`
-		Body   string `json:"body"`
-	}
+	var post Post
 	if err := json.NewDecoder(res.Body).Decode(&post); err != nil {
-		return fmt.Errorf("decode json: %w", err)
+		log.Printf("Error decoding post %d: %v", id, err)
+		return
 	}
 
-	fmt.Printf("Post #%d Title: %s\n", post.ID, post.Title)
-	return nil
-}
-
-func handleMultipleUrlsInForLoop() error {
-	for i := 1; i <= 100; i++ {
-        if err := fetchOneUrl(i); err != nil {
-			return err
-		}
-    }
-	return nil
+	fmt.Printf("Successfully fetched Post #%d, %s\n", post.ID, post.Title)
 }
