@@ -22,12 +22,13 @@ Using Simple Public APIs (Recommended for Concurrency Focus)
 
 ## How To Do
 
+s
+
 ### Phase 1: Foundation & Single-Page Scraper
 
-Before adding concurrency, establish a working baseline for fetching and parsing.
+Before adding concurrency, establish a working baseline for fetching and deooding JSON data.
 
 - **Initialize Project**: Create your directory and run `go mod init <name>`.
-- **Select Libraries**: Install Colly for the crawling framework or **Goquery for jQuery-like HTML parsing**.
 - **Build Sequential Logic**: Write a function to fetch one URL, extract specific data (like titles or prices), and print them to the console.
 - **Error Handling**: Implement basic checks for failed HTTP requests or missing HTML elements to prevent panics.
 
