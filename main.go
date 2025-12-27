@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
-	"time"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 )
 
 type Post struct {
@@ -36,8 +36,11 @@ func main() {
 	defer writer.Flush() // Ensures all data is physically written to the disk
 
 	writer.Write([]string{"ID", "Title"})
- 	
+	 
 	postIDs := []int{1,2,3,4,5,10,50,75,100}
+
+	// Global rate limiter: 1 request every 300ms (~3.3 req/sec)
+	rateTicker := time.NewTicker(300 * time.Millisecond)
 	
 	// Jobs channel and worker pool
 	jobs := make(chan int)
@@ -49,6 +52,9 @@ func main() {
 		go func() {
 			defer workersWg.Done()
 			for id := range jobs {
+				// Rate limit: one fetch per tick across all workers
+				<-rateTicker.C
+
 				post, err := fetchPost(id)
 				if err != nil {
 					log.Printf("Error fetching post %d: %v", id, err)
@@ -66,11 +72,13 @@ func main() {
 		}
 		close(jobs)
 		workersWg.Wait()
+		// Stop the ticker once all workers have finished
+		rateTicker.Stop()
 		close(channel)
 	}()
 
 	for post := range channel {
-    	row := []string{
+		row := []string{
 			strconv.Itoa(post.ID), 
 			post.Title,
 		}
