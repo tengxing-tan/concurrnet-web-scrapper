@@ -20,8 +20,10 @@ type Post struct {
 func main() {
 	start := time.Now()
 
-	var wg sync.WaitGroup
+	// Fixed-size worker pool
+	const workerCount = 5
 
+	// Results channel consumed by the CSV writer
 	channel := make(chan Post, 10) // Buffered size of 10
 
 	file, err := os.Create("posts.csv")
@@ -37,15 +39,33 @@ func main() {
  	
 	postIDs := []int{1,2,3,4,5,10,50,75,100}
 	
-	for _, id := range postIDs {
-		wg.Add(1)
-		go fetchPostInChan(id, &wg, channel)
+	// Jobs channel and worker pool
+	jobs := make(chan int)
+	var workersWg sync.WaitGroup
+
+	// Start fixed number of workers
+	for i := 0; i < workerCount; i++ {
+		workersWg.Add(1)
+		go func() {
+			defer workersWg.Done()
+			for id := range jobs {
+				post, err := fetchPost(id)
+				if err != nil {
+					log.Printf("Error fetching post %d: %v", id, err)
+					continue
+				}
+				channel <- post
+			}
+		}()
 	}
 
-	// Start a goroutine to Wait and Close the channel.
+	// Feed jobs and close channels when done
 	go func() {
-		// Block the main function here until the counter returns to 0
-		wg.Wait() 
+		for _, id := range postIDs {
+			jobs <- id
+		}
+		close(jobs)
+		workersWg.Wait()
 		close(channel)
 	}()
 
@@ -63,25 +83,18 @@ func main() {
 	fmt.Printf("\nDone processed %d requests in %v\n", len(postIDs), time.Since(start))
 }
 
-// The 'chan<-' syntax means this function can only SEND to the channel NOT read/close
-func fetchPostInChan(id int, wg *sync.WaitGroup, channel chan<- Post) {
-	defer wg.Done()
+// New helper used by workers
+func fetchPost(id int) (Post, error) {
+    url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", id)
+    res, err := http.Get(url)
+    if err != nil {
+        return Post{}, err
+    }
+    defer res.Body.Close()
 
-	url := fmt.Sprintf("https://jsonplaceholder.typicode.com/posts/%d", id)
-
-	res, err := http.Get(url)
-
-	if err != nil {
-		log.Printf("Error fetching post %d: %v", id, err)
-		return
-	}
-	defer res.Body.Close()
-
-	var post Post
-	if err := json.NewDecoder(res.Body).Decode(&post); err != nil {
-		log.Printf("Error decoding post %d: %v", id, err)
-		return
-	}
-
-	channel <- post
+    var post Post
+    if err := json.NewDecoder(res.Body).Decode(&post); err != nil {
+        return Post{}, err
+    }
+    return post, nil
 }
